@@ -100,17 +100,13 @@
     ///////ПРИМЕРНЫЙ ПОИСК ПО ПЕРВОЙ БУКВЕ
     // Подключение к базе данных
     $link = mysqli_connect('localhost', 'username', 'password', 'database_name'); // Замените на свои данные
-
     if (!$link) {
         die('Ошибка подключения: ' . mysqli_connect_error());
     }
-
     // Получаем букву для поиска из запроса (например, из формы)
     $search_letter = isset($_GET['letter']) ? $_GET['letter'] : '';
-
     // Экранируем букву для предотвращения SQL-инъекций
     $search_letter = mysqli_real_escape_string($link, $search_letter);
-
     // Проверяем, что буква не пустая
     if (!empty($search_letter)) {
         // SQL-запрос для поиска пользователей по первой букве
@@ -137,6 +133,50 @@
 
     // Закрытие соединения с базой данных
     mysqli_close($link);
+
+
+
+
+    ///////ПРИМЕР ЧТО ЗВЕРЕВ ПОКАЗАЛ СОРТИРОВКА ТАБЛИЦ 1
+    @param string $column -- название столбца по которому сортируется
+    @param string $currentSortColumn -- название столбца по которому сейчас отсортирован
+    @param string $currentSortOrder -- текущий порядок сортировки ('ASC' или 'DESC')
+    @return string URL с параметрами для сортировки
+    function getSortUrl(string $column, string $currentSortColumn, string $currentSortOrder): string {
+        $url = $_SERVER['PHP_SELF'] . '?'; -- получаем текущий URL скрипта и добавляем '?' для начала строки запроса
+        foreach ($_GET as $key => $value) { -- перебираем все GET-параметры
+            if ($key !== 'sort_column' && $key !== 'sort_order') { -- исключаем параметры сортировки чтобы избежать дублирования
+                $url .= urlencode($key) . '-' . urlencode($value) . '&'; -- добавляем параметр в URL кодируя ключ и значение
+            }
+        }
+        $sortOrder = ($column === $currentSortColumn) ? -- если столбец для сортировки совпадает с текущим столбцом
+            (($currentSortOrder === 'ASC') ? 'DESC' : 'ASC') : -- меняем порядок сортировки на противоположный, если столбец тот же, иначе
+            'ASC'; -- устанавливаем порядок сортировки по возрастанию (ASC) для нового столбца
+        $url .= 'sort_column=' . urlencode($column) . '&sort_order=' . urlencode($sortOrder); -- добавляем параметры сортировки в URL кодируя их
+        return $url -- возвращаем сформированный URL для сортировки
+    }
+
+    ///////ПРИМЕР ЧТО ЗВЕРЕВ ПОКАЗАЛ СОРТИРОВКА ТАБЛИЦ 2
+    @param mysqli $conn -- экземпляр mysqli для подключения к базе данных
+    @param string $tableName -- название таблицы для сортировки
+    @param string $defaultSortColumn -- столбец для сортировки по умолчанию
+    @param string $defaultSortOrder -- порядок сортировки по умолчанию ('ASC' или 'DESC')
+    @return array отсортированные данные для выхода в HTML-таблицу. возвращает пустой массив если возникла ошибка
+    function getSortedTableData(mysqli $conn, string $tableName, string $defaultSortColumn = 'id', string $defaultSortOrder = 'ASC'): array {
+        $sortColumn = $_GET['sort_column'] ?? $defaultSortColumn; -- получаем столбец для сортировки из GET-параметра или используем значение по умолчанию
+        $sortOrder = $_GET['sort_order'] ?? $defaultSortOrder; -- получаем порядок сортировки из GET-параметра или используем значение по умолчанию
+        $sql = "SELECT * FROM `$tableName` ORDER BY `$sortColumn` $sortOrder'"; -- формируем SQL-запрос для получения данных с сортировкой
+        $result = $conn->query($sql); -- выполняем SQL-запрос
+        $data = []; -- инициализируем массив для хранения данных
+        if ($result) { -- если запрос выполнен успешно
+            while ($row = $result->fetch_assoc()) { -- перебираем результаты запроса в виде ассоциативного массива
+                $data[] = $row; -- добавляем каждую строку в массив данных
+            }
+            $result->free(); -- освобождаем память выделенную для результата запроса 
+        }
+        return $data; -- возвращаем отсортированный массив данных
+    }
+
 
 
     ?>
